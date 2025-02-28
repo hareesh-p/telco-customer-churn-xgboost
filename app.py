@@ -8,6 +8,9 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix, roc_curve, auc
 from xgboost import XGBClassifier
 
+# Set page configuration
+st.set_page_config(page_title="Telco Customer Churn Analysis and Prediction")
+
 @st.cache_data
 def load_data():
     data = pd.read_csv("telco_customer_churn.csv")
@@ -105,6 +108,23 @@ if option == "Interactive Data Exploration":
     )
 
     filtered_data = original_data.copy()
+
+    # Add sliders for numerical fields
+    if 'tenure' in selected_features:
+        tenure_min, tenure_max = st.slider("Select Tenure Range (Months)", min_value=0, max_value=72, value=(0, 72))
+        filtered_data = filtered_data[(filtered_data["tenure"] >= tenure_min) & (filtered_data["tenure"] <= tenure_max)]
+        selected_features.remove('tenure')
+
+    if 'MonthlyCharges' in selected_features:
+        charges_min, charges_max = st.slider("Select Monthly Charges Range", min_value=0, max_value=150, value=(0, 150))
+        filtered_data = filtered_data[(filtered_data["MonthlyCharges"] >= charges_min) & (filtered_data["MonthlyCharges"] <= charges_max)]
+        selected_features.remove('MonthlyCharges')
+
+    if 'TotalCharges' in selected_features:
+        total_min, total_max = st.slider("Select Total Charges Range", min_value=0, max_value=int(filtered_data['TotalCharges'].max()), value=(0, int(filtered_data['TotalCharges'].max())))
+        filtered_data = filtered_data[(filtered_data["TotalCharges"] >= total_min) & (filtered_data["TotalCharges"] <= total_max)]
+        selected_features.remove('TotalCharges')
+
     for feature in selected_features:
         unique_values = filtered_data[feature].unique().tolist()
         filter_values = st.multiselect(f"Filter {feature}", unique_values, default=unique_values)
@@ -112,12 +132,13 @@ if option == "Interactive Data Exploration":
 
     st.write("Filtered Data", filtered_data)
 
-    # Display summary statistics (for all numerical columns)
-    st.write("Summary Statistics", filtered_data.describe())
+    # Display summary statistics (excluding categorical columns)
+    numeric_filtered_data = filtered_data.select_dtypes(include=[np.number])
+    numeric_filtered_data = numeric_filtered_data.drop(columns=['SeniorCitizen'])  # Exclude SeniorCitizen
+    st.write("Summary Statistics", numeric_filtered_data.describe())
 
     # Display correlation matrix
     st.write("Correlation Matrix")
-    numeric_filtered_data = filtered_data.select_dtypes(include=[np.number])
     if numeric_filtered_data.empty:
         st.write("No numeric data to display correlation matrix.")
     else:
